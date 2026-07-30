@@ -35,8 +35,7 @@ export function getDb() {
         })
 
         if (!res.ok) {
-          const text = await res.text()
-          console.error('Turso error:', res.status, text.slice(0, 300))
+          console.error('Turso HTTP error:', res.status)
           return { rows: [] }
         }
 
@@ -59,7 +58,7 @@ export function getDb() {
 
         return { rows: mapped }
       } catch (e) {
-        console.error('Turso fetch error:', e)
+        console.error('Turso fetch error:', e instanceof Error ? e.message : String(e))
         return { rows: [] }
       }
     },
