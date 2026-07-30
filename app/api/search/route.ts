@@ -1,5 +1,6 @@
 import { getDb } from '@/lib/db'
 import { normalizeArabic } from '@/lib/normalize'
+import { cleanSchoolName } from '@/lib/school'
 import { NextRequest, NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
@@ -13,16 +14,16 @@ export async function GET(req: NextRequest) {
   const [rows, total] = await Promise.all([
     db.execute({
       sql: `SELECT * FROM students
-            WHERE student_id LIKE ?
-               OR name_norm LIKE ?
-            ORDER BY total_adjusted DESC
+            WHERE student_id LIKE ?1
+               OR name_norm LIKE ?2
+            ORDER BY average_adjusted DESC
             LIMIT 300`,
       args: [like, like],
     }),
     db.execute({
       sql: `SELECT COUNT(*) as c FROM students
-            WHERE student_id LIKE ?
-               OR name_norm LIKE ?`,
+            WHERE student_id LIKE ?1
+               OR name_norm LIKE ?2`,
       args: [like, like],
     }),
   ])
@@ -41,7 +42,9 @@ function formatStudent(s: any) {
     average: s.average,
     total: s.total,
     result: s.result,
-    school: s.school,
+    school: cleanSchoolName(s.school),
+    school_raw: s.school,
+    directorate: s.directorate || '',
     branch: s.branch,
     grades: JSON.parse(s.grades || '{}'),
     lughat: s.lughat,

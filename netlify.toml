@@ -9,5 +9,5 @@
   package = "@netlify/plugin-nextjs"
 
 # Set these in Netlify dashboard: Site Settings → Environment Variables
-# TURSO_DB_URL - your Turso database URL (libsql://...)
+# TURSO_DB_URL - your Turso database URL (https://...)
 # TURSO_DB_TOKEN - your Turso authentication token

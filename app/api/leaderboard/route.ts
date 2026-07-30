@@ -1,4 +1,5 @@
 import { getDb } from '@/lib/db'
+import { cleanSchoolName } from '@/lib/school'
 import { NextRequest, NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
@@ -14,15 +15,15 @@ export async function GET(req: NextRequest) {
 
   if (branch) {
     const [t, r] = await Promise.all([
-      db.execute({ sql: 'SELECT COUNT(*) as c FROM students WHERE branch = ?', args: [branch] }),
-      db.execute({ sql: 'SELECT * FROM students WHERE branch = ? ORDER BY average_adjusted DESC LIMIT ?', args: [branch, limit] }),
+      db.execute({ sql: 'SELECT COUNT(*) as c FROM students WHERE branch = ?1', args: [branch] }),
+      db.execute({ sql: 'SELECT * FROM students WHERE branch = ?1 ORDER BY average_adjusted DESC LIMIT ?2', args: [branch, limit] }),
     ])
     total = Number((t.rows[0] as any).c)
     rows = r
   } else {
     const [t, r] = await Promise.all([
       db.execute('SELECT COUNT(*) as c FROM students'),
-      db.execute({ sql: 'SELECT * FROM students ORDER BY average_adjusted DESC LIMIT ?', args: [limit] }),
+      db.execute({ sql: 'SELECT * FROM students ORDER BY average_adjusted DESC LIMIT ?1', args: [limit] }),
     ])
     total = Number((t.rows[0] as any).c)
     rows = r
@@ -32,7 +33,9 @@ export async function GET(req: NextRequest) {
     student_id: s.student_id,
     name: s.name,
     name_display: s.name_norm,
-    school: s.school,
+    school: cleanSchoolName(s.school),
+    school_raw: s.school,
+    directorate: s.directorate || '',
     branch: s.branch,
     average_adjusted: s.average_adjusted,
     total_adjusted: s.total_adjusted,

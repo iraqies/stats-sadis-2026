@@ -1,5 +1,6 @@
 node_modules/
 .next/
-students.db
-students.db.zip
-.DS_Store
+*.db
+*.db-shm
+*.db-wal
+*.db.zip

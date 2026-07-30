@@ -159,6 +159,8 @@ export default function Page() {
                     <span className="meta">
                       <span>{s.school}</span>
                       <span className="dot">|</span>
+                      <span>{s.directorate || s.branch}</span>
+                      <span className="dot">|</span>
                       <span>{s.branch}</span>
                       <span className="dot">|</span>
                        <span>المجموع: <strong>{Number(s.total_adjusted || s.total || 0).toFixed(2)}</strong></span>
@@ -198,13 +200,14 @@ export default function Page() {
                     <th>#</th>
                     <th>الاسم</th>
                     <th>المدرسة</th>
+                    <th>المنطقة</th>
                     <th>الفرع</th>
                     <th>المعدل</th>
                     <th>المجموع</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {!lbData && <tr><td colSpan={6} className="lb-loading">جاري التحميل...</td></tr>}
+                  {!lbData && <tr><td colSpan={7} className="lb-loading">جاري التحميل...</td></tr>}
                   {lbData?.results.map((s, i) => {
                     const rc = `rank${s.leader_rank === 1 ? ' rank-1' : s.leader_rank === 2 ? ' rank-2' : s.leader_rank === 3 ? ' rank-3' : ''}`
                     return (
@@ -212,6 +215,7 @@ export default function Page() {
                         <td className={`rank ${rc}`}>{s.leader_rank}</td>
                         <td className="name">{s.name_display || s.name}</td>
                         <td className="school">{s.school}</td>
+                        <td className="branch">{s.directorate || '-'}</td>
                         <td className="branch">{s.branch}</td>
                         <td className="avg">{s.average_adjusted?.toFixed(2)}</td>
                         <td className="total">{s.total_adjusted?.toFixed(2)}</td>
@@ -237,19 +241,21 @@ export default function Page() {
                   <tr>
                     <th>#</th>
                     <th>المدرسة</th>
+                    <th>المنطقة</th>
                     <th>عدد الطلاب</th>
                     <th>الوزن</th>
                     <th>متوسط المجموع</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {!scData && <tr><td colSpan={5} className="lb-loading">جاري التحميل...</td></tr>}
+                  {!scData && <tr><td colSpan={6} className="lb-loading">جاري التحميل...</td></tr>}
                   {scData?.results.map(s => {
                     const rc = `rank${s.rank === 1 ? ' rank-1' : s.rank === 2 ? ' rank-2' : s.rank === 3 ? ' rank-3' : ''}`
                     return (
-                      <tr key={s.school} className="clickable-row" onClick={() => showSchoolStudents(s.school)}>
+                      <tr key={s.school} className="clickable-row" onClick={() => showSchoolStudents(s.school_raw || s.school)}>
                         <td className={`rank ${rc}`}>{s.rank}</td>
                         <td className="name">{s.school}</td>
+                        <td className="branch">{s.directorate || '-'}</td>
                         <td className="school" style={{ textAlign: 'center' }}>{s.student_count.toLocaleString()}</td>
                         <td className="total" style={{ textAlign: 'center' }}>{s.total_weight.toLocaleString()}</td>
                         <td className="avg" style={{ textAlign: 'center' }}>{s.avg_score.toFixed(2)}</td>
@@ -271,7 +277,8 @@ export default function Page() {
           {profile && <AdSlot format="banner" />}
           {schoolStudents && (
             <>
-              <h2>طلاب المدرسة</h2>
+              <h2>طلاب {schoolStudents[0]?.school || 'المدرسة'}</h2>
+              <div className="sub" style={{ marginBottom: 12 }}>{schoolStudents[0]?.directorate ? `المنطقة: ${schoolStudents[0].directorate}` : ''}</div>
               <div className="results" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
                 {schoolStudents.map(s => (
                   <div key={s.student_id} className="card" onClick={() => { setSchoolStudents(null); showProfile(s.student_id) }} style={{ padding: '12px 16px' }}>
@@ -326,10 +333,9 @@ function ProfileContent({ student, statsTotal }: { student: Student; statsTotal:
       </div>
       <div className="info-grid">
         <div><div className="label">المدرسة</div><div className="value">{s.school || '-'}</div></div>
+        <div><div className="label">المنطقة</div><div className="value">{s.directorate || '-'}</div></div>
         <div><div className="label">الفرع</div><div className="value">{s.branch || '-'}</div></div>
-        <div><div className="label">المعدل الخام</div><div className="value">{s.average || '-'}</div></div>
-        <div><div className="label">المجموع العام</div><div className="value">{s.total || '-'}</div></div>
-        <div><div className="label">المعدل</div><div className="value">{Number(s.average_adjusted || s.average || 0).toFixed(2)}</div></div>
+        <div><div className="label">المعدل العام</div><div className="value">{Number(s.average_adjusted || s.average || 0).toFixed(2)}</div></div>
         <div><div className="label">المجموع</div><div className="value">{Number(s.total_adjusted || s.total || 0).toFixed(2)}</div></div>
         <div><div className="label">النتيجة</div><div className="value"><span className={rc}>{s.result || '-'}</span></div></div>
       </div>

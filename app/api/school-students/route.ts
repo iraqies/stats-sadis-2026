@@ -1,4 +1,5 @@
 import { getDb } from '@/lib/db'
+import { cleanSchoolName } from '@/lib/school'
 import { NextRequest, NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
@@ -11,8 +12,8 @@ export async function GET(req: NextRequest) {
 
   const db = getDb()
   const [t, rows] = await Promise.all([
-    db.execute({ sql: 'SELECT COUNT(*) as c FROM students WHERE school = ?', args: [school] }),
-    db.execute({ sql: 'SELECT * FROM students WHERE school = ? ORDER BY average_adjusted DESC LIMIT ?', args: [school, limit] }),
+    db.execute({ sql: 'SELECT COUNT(*) as c FROM students WHERE school = ?1', args: [school] }),
+    db.execute({ sql: 'SELECT * FROM students WHERE school = ?1 ORDER BY average_adjusted DESC LIMIT ?2', args: [school, limit] }),
   ])
   const total = Number((t.rows[0] as any).c)
 
@@ -28,6 +29,9 @@ export async function GET(req: NextRequest) {
       total_adjusted: s.total_adjusted,
       result: s.result,
       grades: JSON.parse(s.grades || '{}'),
+      school: cleanSchoolName(s.school),
+      school_raw: s.school,
+      directorate: s.directorate || '',
       school_rank: rank,
     }
   })

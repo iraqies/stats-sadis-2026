@@ -1,4 +1,5 @@
 import { getDb } from '@/lib/db'
+import { cleanSchoolName } from '@/lib/school'
 import { NextRequest, NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
@@ -9,16 +10,16 @@ export async function GET(req: NextRequest) {
 
   const db = getDb()
   const all = await db.execute(
-    'SELECT student_id, school, total_adjusted, average_adjusted FROM students ORDER BY average_adjusted DESC LIMIT 1000',
+    'SELECT student_id, school, directorate, total_adjusted, average_adjusted FROM students ORDER BY average_adjusted DESC LIMIT 1000',
   )
 
-  const schoolsMap = new Map<string, { school: string; weight: number; student_count: number; total_score: number }>()
+  const schoolsMap = new Map<string, { school: string; school_raw: string; directorate: string; weight: number; student_count: number; total_score: number }>()
   for (let rank = 0; rank < all.rows.length; rank++) {
     const s = all.rows[rank] as any
     if (!s.school) continue
     const key = s.school
     if (!schoolsMap.has(key)) {
-      schoolsMap.set(key, { school: s.school, weight: 0, student_count: 0, total_score: 0 })
+      schoolsMap.set(key, { school: s.school, school_raw: s.school, directorate: s.directorate || '', weight: 0, student_count: 0, total_score: 0 })
     }
     const entry = schoolsMap.get(key)!
     entry.weight += (1000 - rank)
@@ -31,7 +32,9 @@ export async function GET(req: NextRequest) {
     .slice(0, limit)
     .map((s, i) => ({
       rank: i + 1,
-      school: s.school,
+      school: cleanSchoolName(s.school),
+      school_raw: s.school_raw,
+      directorate: s.directorate,
       student_count: s.student_count,
       avg_score: parseFloat((s.total_score / s.student_count).toFixed(2)),
       total_weight: s.weight,

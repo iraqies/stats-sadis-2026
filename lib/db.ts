@@ -1,39 +1,40 @@
 import { createClient } from '@libsql/client'
-import path from 'path'
 
-const DB_PATH = path.join(process.cwd(), 'students.db')
-
-let db: Awaited<ReturnType<typeof createClient>>
+let _client: ReturnType<typeof createClient> | null = null
 
 export function getDb() {
-  if (!db) {
-    const url = process.env.TURSO_DB_URL || `file:${DB_PATH}`
-    const authToken = process.env.TURSO_DB_TOKEN
-    db = createClient(authToken ? { url, authToken } : { url })
+  if (!_client) {
+    _client = createClient({
+      url: process.env.TURSO_DB_URL || '',
+      authToken: process.env.TURSO_DB_TOKEN || '',
+    })
   }
-  return db
+  return {
+    async execute(query: string | { sql: string; args?: any[] }): Promise<{ rows: any[] }> {
+      try {
+        const client = _client!
+        if (typeof query === 'string') {
+          const rs = await client.execute(query)
+          return { rows: rs.rows }
+        } else {
+          const rs = await client.execute({
+            sql: query.sql,
+            args: query.args as any[] || [],
+          })
+          return { rows: rs.rows }
+        }
+      } catch (e) {
+        return { rows: [] }
+      }
+    },
+    close() {
+      _client?.close()
+      _client = null
+    },
+  }
 }
 
 export function closeDb() {
-  if (db) { db.close(); db = undefined as any }
-}
-
-export interface StudentRow {
-  student_id: string
-  sequence: number
-  name: string
-  name_norm: string
-  average: number
-  total: number
-  result: string
-  school: string
-  branch: string
-  grades: string
-  lughat: number
-  najah_bonus: number
-  total_adjusted: number
-  average_adjusted: number
-  rank_overall: number | null
-  rank_branch: number | null
-  branch_total: number | null
+  _client?.close()
+  _client = null
 }
