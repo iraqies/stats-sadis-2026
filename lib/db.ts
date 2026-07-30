@@ -1,15 +1,28 @@
 const DB_URL = process.env.TURSO_DB_URL || ''
 const TOKEN = process.env.TURSO_DB_TOKEN || ''
 
+function escape(val: any): string {
+  if (val === null || val === undefined) return 'NULL'
+  if (typeof val === 'number') return String(val)
+  const s = String(val)
+  return "'" + s.replace(/'/g, "''") + "'"
+}
+
 export function getDb() {
   return {
     async execute(query: string | { sql: string; args?: any[] }): Promise<{ rows: any[] }> {
       try {
-        const sql = typeof query === 'string' ? query : query.sql
-        const args = typeof query === 'string' ? [] : (query.args || [])
+        let sql: string
+        if (typeof query === 'string') {
+          sql = query
+        } else {
+          let i = 0
+          const args = query.args || []
+          sql = query.sql.replace(/\?\d*/g, () => escape(args[i++]))
+        }
 
         const body = JSON.stringify({
-          requests: [{ type: 'execute', stmt: { sql, args } }],
+          requests: [{ type: 'execute', stmt: { sql } }],
         })
 
         const res = await fetch(`${DB_URL}/v2/pipeline`, {
