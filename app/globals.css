@@ -1,0 +1,92 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Cairo',system-ui,-apple-system,sans-serif;background:#0f0f1a;color:#e0e0e0;min-height:100vh}
+::selection{background:#6366f1;color:#fff}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:#1a1a2e}
+::-webkit-scrollbar-thumb{background:#6366f1;border-radius:3px}
+.header{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);border-bottom:1px solid rgba(99,102,241,.3);padding:16px 24px;position:sticky;top:0;z-index:50;backdrop-filter:blur(12px)}
+.header-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.header h1{font-size:1.3rem;font-weight:800;background:linear-gradient(135deg,#818cf8,#c084fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.header .stats{color:#94a3b8;font-size:.85rem;font-weight:500}
+.tabs{display:flex;gap:4px;background:#1a1a2e;padding:4px;border-radius:12px;margin:20px auto;max-width:400px}
+.tab{flex:1;padding:10px 20px;font-size:.9rem;font-weight:600;border:none;background:transparent;color:#64748b;cursor:pointer;border-radius:8px;transition:all .25s ease;font-family:inherit}
+.tab:hover{color:#e0e0e0}
+.tab.active{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;box-shadow:0 4px 15px rgba(99,102,241,.4)}
+.main{max-width:1200px;margin:0 auto;padding:0 20px 40px}
+#view-leaderboard{display:none}
+#view-schools{display:none}
+.lb-header{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:16px;background:#1a1a2e;padding:16px 20px;border-radius:12px;border:1px solid rgba(99,102,241,.15)}
+.lb-header select{background:#0f0f1a;color:#e0e0e0;border:1px solid #2a2a4a;padding:8px 14px;border-radius:8px;font-size:.9rem;font-family:inherit;cursor:pointer;outline:none;min-width:200px}
+.lb-header select:focus{border-color:#6366f1}
+.lb-header .count{color:#94a3b8;font-size:.85rem;margin-right:auto}
+.lb-table-wrap{background:#1a1a2e;border-radius:12px;overflow:hidden;border:1px solid rgba(99,102,241,.1);box-shadow:0 4px 24px rgba(0,0,0,.2)}
+.lb-table{width:100%;border-collapse:collapse;font-size:.85rem}
+.lb-table thead{background:linear-gradient(135deg,#1e1e3a,#2a1a4a)}
+.lb-table th{padding:14px 16px;text-align:right;color:#94a3b8;font-weight:600;font-size:.8rem;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid rgba(99,102,241,.15);white-space:nowrap}
+.lb-table td{padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.04)}
+.lb-table tbody tr{transition:all .2s;cursor:pointer}
+.lb-table tbody tr:hover{background:rgba(99,102,241,.08)}
+.lb-table .rank{text-align:center;font-weight:700;font-size:1rem;width:60px}
+.lb-table .rank-1{color:#fbbf24;text-shadow:0 0 20px rgba(251,191,36,.3)}
+.lb-table .rank-2{color:#94a3b8}
+.lb-table .rank-3{color:#d97706}
+.lb-table .name{font-weight:600;color:#f1f5f9}
+.lb-table .branch{color:#818cf8;font-size:.8rem}
+.lb-table .school{color:#64748b;font-size:.8rem}
+.lb-table .avg{text-align:center;font-weight:600;color:#a78bfa}
+.lb-table .total{text-align:center;font-weight:700;color:#f1f5f9}
+.lb-table tbody .clickable-row{cursor:pointer}
+.lb-table tbody .clickable-row:hover{background:rgba(99,102,241,.12)}
+.lb-loading{text-align:center;padding:48px;color:#64748b}
+.search-bar{display:flex;gap:12px;align-items:center;margin-bottom:20px;background:#1a1a2e;padding:8px 20px;border-radius:12px;border:1px solid rgba(99,102,241,.15);transition:border-color .3s}
+.search-bar:focus-within{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.15)}
+.search-bar input{flex:1;padding:14px 0;font-size:1rem;background:transparent;border:none;outline:none;color:#e0e0e0;font-family:inherit}
+.search-bar input::placeholder{color:#475569}
+.search-bar .count{color:#64748b;font-size:.85rem;white-space:nowrap;font-weight:500}
+.results{display:grid;gap:12px}
+.card{background:linear-gradient(135deg,#1a1a2e,#1e1e3a);border-radius:12px;padding:18px 22px;border:1px solid rgba(99,102,241,.08);cursor:pointer;transition:all .25s ease}
+.card:hover{border-color:rgba(99,102,241,.3);transform:translateY(-2px);box-shadow:0 8px 30px rgba(99,102,241,.12)}
+.card .top{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:baseline}
+.card .id{direction:ltr;display:inline-block;font-family:'Cairo',monospace;font-size:.9rem;color:#818cf8;font-weight:700}
+.card .name{font-size:1.05rem;font-weight:700;color:#f1f5f9}
+.card .meta{color:#64748b;font-size:.82rem;display:flex;gap:10px;flex-wrap:wrap}
+.card .meta span{display:flex;align-items:center;gap:4px}
+.card .meta .dot{color:#475569;margin:0 2px}
+.card .result{font-weight:700;padding:2px 12px;border-radius:6px;font-size:.82rem}
+.result-P{background:rgba(34,197,94,.15);color:#22c55e}
+.result-F{background:rgba(239,68,68,.15);color:#ef4444}
+.result-R{background:rgba(234,179,8,.15);color:#eab308}
+.card .grades{font-size:.8rem;color:#64748b;display:flex;gap:4px 16px;flex-wrap:wrap;width:100%;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06)}
+.card .grades .subj{color:#818cf8}
+.card .grades .val{font-weight:600;color:#e0e0e0}
+.empty{text-align:center;padding:48px;color:#475569;font-size:.95rem}
+.error{text-align:center;padding:24px;color:#ef4444}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:100;align-items:center;justify-content:center}
+.overlay.open{display:flex}
+.modal{background:linear-gradient(135deg,#1a1a2e,#1e1e3a);border-radius:16px;width:92%;max-width:580px;max-height:90vh;overflow-y:auto;padding:28px;box-shadow:0 20px 60px rgba(0,0,0,.5);border:1px solid rgba(99,102,241,.15);position:relative}
+.modal .close{position:absolute;top:14px;left:18px;font-size:1.6rem;cursor:pointer;color:#475569;background:none;border:none;transition:color .2s;line-height:1}
+.modal .close:hover{color:#ef4444}
+.modal h2{font-size:1.3rem;font-weight:800;color:#f1f5f9;margin-bottom:2px}
+.modal .sub{color:#64748b;font-size:.85rem;margin-bottom:16px;direction:ltr;display:inline-block;font-family:'Cairo',monospace}
+.modal .rank-badge{display:inline-flex;flex-direction:column;gap:4px;background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.2);padding:12px 18px;border-radius:12px;font-size:.85rem;margin-bottom:18px;width:100%}
+.modal .rank-badge .line{color:#94a3b8}
+.modal .rank-badge .line strong{color:#818cf8}
+.modal .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 20px;margin-bottom:20px;background:rgba(255,255,255,.02);padding:16px;border-radius:10px}
+.modal .info-grid .label{color:#64748b;font-size:.78rem;font-weight:500}
+.modal .info-grid .value{font-weight:600;color:#f1f5f9;font-size:.92rem}
+.modal .info-grid .value .result{display:inline-block;margin-top:2px}
+.modal .grades-table{width:100%;border-collapse:collapse;font-size:.88rem;margin-top:4px}
+.modal .grades-table th{text-align:right;padding:10px 12px;border-bottom:2px solid rgba(99,102,241,.15);color:#818cf8;font-weight:600;font-size:.8rem}
+.modal .grades-table td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.04);color:#e0e0e0}
+.modal .grades-table td:last-child{text-align:center;font-weight:700;color:#a78bfa}
+.modal .grades-table .total-row td{border-top:2px solid rgba(99,102,241,.2);font-weight:700;color:#f1f5f9;background:rgba(99,102,241,.06)}
+.modal .grades-table .total-row td:last-child{color:#fbbf24}
+.modal .grades-table .bonus-row td{color:#94a3b8}
+.modal .grades-table .bonus-row td:last-child{color:#22c55e}
+.ad-container{text-align:center;padding:8px;min-height:90px;display:flex;align-items:center;justify-content:center;background:#1a1a2e;border-radius:12px;margin:16px auto;max-width:728px;border:1px solid rgba(99,102,241,.08);overflow:hidden}
+.ad-container.ad-in-feed{margin:12px 0;min-height:120px;max-width:100%}
+.ad-container ins.adsbygoogle{min-height:90px}
+.ad-container.ad-in-feed ins.adsbygoogle{min-height:120px}
+@media(max-width:640px){.modal .info-grid{grid-template-columns:1fr}}
+@media(max-width:480px){.header h1{font-size:1rem}.search-bar{padding:6px 14px}.card{padding:14px 16px}}
