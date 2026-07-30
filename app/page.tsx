@@ -309,7 +309,7 @@ function AdSlot({ format }: { format?: 'banner' | 'in-feed' }) {
     <div className={`ad-container ${format === 'in-feed' ? 'ad-in-feed' : ''}`}>
       <ins className="adsbygoogle"
         style={{ display: 'block' }}
-        data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+        data-ad-client="ca-pub-6588852866380072"
         data-ad-slot="XXXXXXXXXX"
         data-ad-format={format === 'in-feed' ? 'fluid' : 'auto'}
         data-full-width-responsive="true"
