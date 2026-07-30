@@ -1,40 +1,57 @@
-import { createClient } from '@libsql/client'
-
-let _client: ReturnType<typeof createClient> | null = null
+const DB_URL = process.env.TURSO_DB_URL || ''
+const TOKEN = process.env.TURSO_DB_TOKEN || ''
 
 export function getDb() {
-  if (!_client) {
-    _client = createClient({
-      url: process.env.TURSO_DB_URL || '',
-      authToken: process.env.TURSO_DB_TOKEN || '',
-    })
-  }
   return {
     async execute(query: string | { sql: string; args?: any[] }): Promise<{ rows: any[] }> {
       try {
-        const client = _client!
-        if (typeof query === 'string') {
-          const rs = await client.execute(query)
-          return { rows: rs.rows }
-        } else {
-          const rs = await client.execute({
-            sql: query.sql,
-            args: query.args as any[] || [],
-          })
-          return { rows: rs.rows }
+        const sql = typeof query === 'string' ? query : query.sql
+        const args = typeof query === 'string' ? [] : (query.args || [])
+
+        const body = JSON.stringify({
+          requests: [{ type: 'execute', stmt: { sql, args } }],
+        })
+
+        const res = await fetch(`${DB_URL}/v2/pipeline`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${TOKEN}`,
+            'Content-Type': 'application/json',
+          },
+          body,
+        })
+
+        if (!res.ok) {
+          const text = await res.text()
+          console.error('Turso error:', res.status, text.slice(0, 300))
+          return { rows: [] }
         }
+
+        const data = await res.json()
+        const result = data.results?.[0]
+        if (result?.type === 'error') {
+          console.error('Turso SQL error:', result.error)
+          return { rows: [] }
+        }
+
+        const cols = result?.response?.result?.cols || []
+        const rows = result?.response?.result?.rows || []
+        const mapped = rows.map((row: any[]) => {
+          const obj: any = {}
+          row.forEach((val: any, i: number) => {
+            obj[cols[i]?.name || `col${i}`] = val?.value ?? null
+          })
+          return obj
+        })
+
+        return { rows: mapped }
       } catch (e) {
+        console.error('Turso fetch error:', e)
         return { rows: [] }
       }
     },
-    close() {
-      _client?.close()
-      _client = null
-    },
+    close() {},
   }
 }
 
-export function closeDb() {
-  _client?.close()
-  _client = null
-}
+export function closeDb() {}
