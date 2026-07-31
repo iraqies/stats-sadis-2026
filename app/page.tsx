@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react'
 
 interface Student {
   student_id: string
@@ -29,7 +29,7 @@ export default function Page() {
   const [results, setResults] = useState<Student[]>([])
   const [count, setCount] = useState(0)
   const [loading, setLoading] = useState(false)
-  const timerRef = useRef<ReturnType<typeof setTimeout>>()
+  const [submitted, setSubmitted] = useState(false)
   const [profile, setProfile] = useState<Student | null>(null)
   const [lbBranch, setLbBranch] = useState('')
   const [lbData, setLbData] = useState<{ results: Student[]; total: number } | null>(null)
@@ -59,6 +59,7 @@ export default function Page() {
 
   const doSearch = useCallback(async (q: string) => {
     if (q.length < 2) { setResults([]); setCount(0); return }
+    setSubmitted(true)
     setLoading(true)
     try {
       const r = await fetch(`/api/search?q=${encodeURIComponent(q)}`)
@@ -71,9 +72,15 @@ export default function Page() {
 
   function onSearchInput(val: string) {
     setQuery(val)
-    clearTimeout(timerRef.current)
-    if (val.trim().length < 2) { setResults([]); setCount(0); return }
-    timerRef.current = setTimeout(() => doSearch(val.trim()), 400)
+    setSubmitted(false)
+    if (val.trim().length < 2) { setResults([]); setCount(0) }
+  }
+
+  function onSearchKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key !== 'Enter') return
+    const v = query.trim()
+    if (v.length < 2) { setResults([]); setCount(0); setSubmitted(false); return }
+    doSearch(v)
   }
 
   function resultClass(val: string) {
@@ -172,20 +179,21 @@ export default function Page() {
             <div className="search-bar">
               <input
                 type="text"
-                placeholder="ابحث بالاسم أو الرقم الامتحاني..."
+                placeholder="ابحث بالاسم أو الرقم الامتحاني ثم اضغط Enter"
                 value={query}
                 onChange={e => onSearchInput(e.target.value)}
+                onKeyDown={onSearchKeyDown}
                 autoFocus
               />
-              <div className="count">{count > 0 ? `${count} نتيجة` : ''}</div>
+              <div className="count">{submitted && count > 0 ? `${count} نتيجة` : ''}</div>
             </div>
             <AdSlot format="banner" />
             <div className="results">
               {loading && <div className="lb-loading">جاري البحث...</div>}
-              {!loading && results.length === 0 && query.length >= 2 && (
+              {submitted && !loading && results.length === 0 && (
                 <div className="empty">لا يوجد طلاب بهذه البيانات</div>
               )}
-              {results.map(s => (
+              {submitted && results.map(s => (
                 <div key={s.student_id} className="card" onClick={() => showProfile(s.student_id)}>
                   <div className="top">
                     <span className="id">{s.student_id}</span>
@@ -211,7 +219,7 @@ export default function Page() {
                 </div>
               ))}
             </div>
-            {results.length > 0 && <AdSlot format="banner" />}
+            {submitted && results.length > 0 && <AdSlot format="banner" />}
           </>
         )}
 

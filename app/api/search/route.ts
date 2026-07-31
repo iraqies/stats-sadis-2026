@@ -39,29 +39,24 @@ async function hasFts(db: ReturnType<typeof getDb>): Promise<boolean> {
   return ftsReady
 }
 
-// Turn a normalized query into FTS5 MATCH syntax: prefix terms joined by AND,
-// e.g. "ابراهيم هيثم" -> `"ابراهيم"* AND "هيثم"*`
+// Turn a normalized query into FTS5 MATCH syntax for an exact ordered phrase,
+// e.g. "حسنين حميد مجيد" -> `"حسنين حميد مجيد"`. All words must appear
+// consecutively, in that order — no loose per-word or out-of-order matches.
 function buildMatch(qNorm: string): string {
-  const terms = qNorm
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((t) => `"${t.replace(/"/g, '""')}"*`)
-  return terms.join(' AND ') || '""*'
+  const phrase = qNorm.split(/\s+/).filter(Boolean).join(' ').replace(/"/g, '""')
+  return phrase ? `"${phrase}"` : '""*'
 }
 
 // Index/LIKE search that works even when the FTS table on Turso is empty or
-// stale. Every term must appear in name_norm (any order), and student ids are
-// matched as a prefix. The WHERE is evaluated as a scan, but it is a single
-// pipeline round-trip over a static dataset (~0.2-0.8s), which is far better
-// than returning "no students" because the FTS index was never populated.
+// stale. Names must contain the whole typed phrase, in order (exact phrase
+// match); numeric queries match the exam number as a prefix. The WHERE is
+// evaluated as a scan, but it is a single pipeline round-trip over a static
+// dataset (~0.2-0.8s), which is far better than returning "no students"
+// because the FTS index was never populated.
 async function buildLike(qNorm: string): Promise<{ rows: any[]; total: number }> {
-  const terms = qNorm.split(/\s+/).filter(Boolean)
-  const termConds = terms.map(() => 'name_norm LIKE ?').join(' AND ')
-  const args = terms.map((t) => `%${t}%`)
-  const where = termConds
-    ? `(${termConds}) OR student_id LIKE ?`
-    : `student_id LIKE ?`
-  const likeArgs = termConds ? [...args, qNorm + '%'] : [qNorm + '%']
+  const isId = /^\d+$/.test(qNorm)
+  const where = isId ? 'student_id LIKE ?' : 'name_norm LIKE ?'
+  const likeArgs = isId ? [qNorm + '%'] : [`%${qNorm}%`]
 
   const [r, c] = await batch([
     {
@@ -97,7 +92,7 @@ export async function GET(req: NextRequest) {
     if (await hasFts(db)) {
       try {
         const match = buildMatch(qNorm)
-        const [rows, count, idRows, idCount] = await batch([
+        const [rows, count] = await batch([
           {
             // ORDER BY rank (FTS5's built-in relevance, same as bm25) triggers
             // the FTS5 top-N optimization: SQLite walks the index and keeps only
@@ -113,33 +108,12 @@ export async function GET(req: NextRequest) {
             sql: `SELECT COUNT(*) AS c FROM ${FTS_TABLE} WHERE ${FTS_TABLE} MATCH ?1`,
             args: [match],
           },
-          {
-            sql: `SELECT ${FIELDS} FROM students
-                  WHERE student_id LIKE ?1
-                  ORDER BY average_adjusted DESC
-                  LIMIT ${MAX_RESULTS}`,
-            args: [qNorm + '%'],
-          },
-          {
-            sql: `SELECT COUNT(*) AS c FROM students WHERE student_id LIKE ?1`,
-            args: [qNorm + '%'],
-          },
         ])
 
         if (rows.length > 0) {
-          const seen = new Set<string>()
-          const merged: any[] = []
-          for (const s of [...rows, ...idRows]) {
-            if (s && s.student_id != null && !seen.has(s.student_id)) {
-              seen.add(s.student_id)
-              merged.push(s)
-            }
-          }
-          const limited = merged.slice(0, MAX_RESULTS)
-          const total =
-            (Number((count[0] as any)?.c) || 0) + (Number((idCount[0] as any)?.c) || 0)
+          const total = Number((count[0] as any)?.c) || 0
           return NextResponse.json(
-            { results: limited.map(formatStudent), total },
+            { results: rows.map(formatStudent), total },
             { headers: CACHE_HEADERS },
           )
         }
@@ -150,7 +124,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 2) Reliable fallback: multi-term LIKE + student_id prefix.
+    // 2) Reliable fallback: exact-phrase name match or exam-number prefix.
     const { rows, total } = await buildLike(qNorm)
     return NextResponse.json(
       { results: rows.map(formatStudent), total },
