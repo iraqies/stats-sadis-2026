@@ -377,7 +377,7 @@ function AdSlot({ format }: { format?: 'banner' | 'in-feed' | 'sidebar' }) {
       <ins className="adsbygoogle"
         style={{ display: 'block' }}
         data-ad-client="ca-pub-6588852866380072"
-        data-ad-slot="XXXXXXXXXX"
+        data-ad-slot="5632532299"
         data-ad-format={format === 'in-feed' ? 'fluid' : 'auto'}
         data-full-width-responsive="true"
       />
