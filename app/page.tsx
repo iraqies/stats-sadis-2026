@@ -168,17 +168,21 @@ export default function Page() {
         </div>
       </div>
 
-      <div className="tabs" style={{ maxWidth: 600 }}>
-        {(['search', 'leaderboard', 'schools'] as const).map(t => (
-          <button key={t} className={`tab${tab === t ? ' active' : ''}`} onClick={() => setTab(t)}>
-            {t === 'search' ? 'بحث' : t === 'leaderboard' ? 'الترتيب' : 'المدارس'}
-          </button>
-        ))}
+      <div className="sysbar">
+        <span className="prompt">&gt;</span>
+        <span>2026_EXAM_DATABASE :: ONLINE :: {stats.total.toLocaleString()} RECORDS</span>
       </div>
 
       <div className="main">
         <div className="layout">
           <div className="content">
+            <div className="tabs">
+              {(['search', 'leaderboard', 'schools'] as const).map(t => (
+                <button key={t} className={`tab${tab === t ? ' active' : ''}`} onClick={() => setTab(t)}>
+                  {t === 'search' ? 'بحث' : t === 'leaderboard' ? 'الترتيب' : 'المدارس'}
+                </button>
+              ))}
+            </div>
         {tab === 'search' && (
           <>
             <div className="search-bar">
