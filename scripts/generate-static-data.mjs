@@ -34,11 +34,14 @@ const LEADER_FIELDS =
   'student_id, name, name_norm, school, directorate, branch, total_adjusted, average_adjusted'
 
 let db
+let source = null
 if (existsSync(localDb)) {
   db = createClient({ url: `file:${localDb}` })
+  source = 'local'
   console.log('Source: local students.db')
 } else if (TURSO_URL && TURSO_TOKEN) {
   db = createClient({ url: TURSO_URL, authToken: TURSO_TOKEN })
+  source = 'turso'
   console.log('Source: Turso')
 } else {
   console.log('No local DB and no TURSO_DB_URL/TURSO_DB_TOKEN set — skipping static generation.')
@@ -48,8 +51,12 @@ if (existsSync(localDb)) {
 async function main() {
   // Local DB may predate the Turso indexes; ensure the two the leaderboard
   // queries rely on so generation doesn't full-scan 631k rows per query.
-  await db.execute('CREATE INDEX IF NOT EXISTS idx_avg ON students(average_adjusted)')
-  await db.execute('CREATE INDEX IF NOT EXISTS idx_branch_avg ON students(branch, average_adjusted)')
+  // Turso already has these (migrate-turso.mjs created them) and its build
+  // token is read-only, so never attempt writes on the Turso path.
+  if (source === 'local') {
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_avg ON students(average_adjusted)')
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_branch_avg ON students(branch, average_adjusted)')
+  }
 
   const total = Number((await db.execute('SELECT COUNT(*) AS c FROM students')).rows[0].c)
   const branchRows = await db.execute(
