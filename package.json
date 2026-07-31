@@ -7,7 +7,7 @@
     "predev": "node scripts/generate-static-data.mjs",
     "dev": "next dev",
     "generate:data": "node scripts/generate-static-data.mjs",
-    "build": "node scripts/generate-static-data.mjs && node scripts/migrate-turso.mjs && next build",
+    "build": "node scripts/generate-static-data.mjs && next build",
     "migrate": "node scripts/migrate-turso.mjs",
     "start": "next start"
   },
