@@ -168,13 +168,14 @@ export default function Page() {
         </div>
       </div>
 
-      <div className="sysbar">
-        <span className="prompt">&gt;</span>
-        <span>2026_EXAM_DATABASE :: ONLINE :: {stats.total.toLocaleString()} RECORDS</span>
-      </div>
-
       <div className="main">
         <div className="layout">
+          <aside className="sidebar side-left">
+            <div className="ad-sticky">
+              <AdSlot format="sidebar" />
+            </div>
+          </aside>
+
           <div className="content">
             <div className="tabs">
               {(['search', 'leaderboard', 'schools'] as const).map(t => (
@@ -327,7 +328,7 @@ export default function Page() {
         )}
           </div>
 
-          <aside className="sidebar">
+          <aside className="sidebar side-right">
             <AdSlot format="sidebar" />
             <div className="ad-sticky">
               <AdSlot format="sidebar" />
