@@ -35,18 +35,26 @@ export default function Page() {
   const [lbData, setLbData] = useState<{ results: Student[]; total: number } | null>(null)
   const [scData, setScData] = useState<{ results: any[]; total: number } | null>(null)
   const [schoolStudents, setSchoolStudents] = useState<Student[] | null>(null)
+  const lbCacheRef = useRef(new Map<string, Record<string, { results: Student[]; total: number }>>())
+  const schoolsCacheRef = useRef<{ results: any[]; total: number } | null>(null)
 
   useEffect(() => { fetchStats() }, [])
 
   async function fetchStats() {
+    const set = (d: any) => setStats({
+      total: Number(d?.total) || 0,
+      branches: (d?.branches && typeof d.branches === 'object') ? d.branches : {},
+    })
     try {
-      const r = await fetch('/api/stats')
-      const d = await r.json()
-      setStats({
-        total: Number(d?.total) || 0,
-        branches: (d?.branches && typeof d.branches === 'object') ? d.branches : {},
-      })
-    } catch { }
+      const r = await fetch('/data/stats.json')
+      if (!r.ok) throw new Error()
+      set(await r.json())
+    } catch {
+      try {
+        const r = await fetch('/api/stats')
+        set(await r.json())
+      } catch { }
+    }
   }
 
   const doSearch = useCallback(async (q: string) => {
@@ -84,23 +92,46 @@ export default function Page() {
   }
 
   async function loadLeaderboard(branch?: string) {
+    const key = branch || 'all'
+    const cached = lbCacheRef.current.get('all')
+    if (cached && cached[key]) { setLbData(cached[key]); return }
     setLbData(null)
     const params = new URLSearchParams({ limit: '1000' })
     if (branch) params.set('branch', branch)
     try {
-      const r = await fetch(`/api/leaderboard?${params}`)
+      const r = await fetch('/data/leaderboards.json')
+      if (!r.ok) throw new Error()
       const d = await r.json()
-      setLbData({ results: Array.isArray(d?.results) ? d.results : [], total: Number(d?.total) || 0 })
-    } catch { setLbData({ results: [], total: 0 }) }
+      lbCacheRef.current.set('all', d)
+      const sel = d?.[key] || d?.all
+      setLbData({ results: Array.isArray(sel?.results) ? sel.results : [], total: Number(sel?.total) || 0 })
+    } catch {
+      try {
+        const r = await fetch(`/api/leaderboard?${params}`)
+        const d = await r.json()
+        setLbData({ results: Array.isArray(d?.results) ? d.results : [], total: Number(d?.total) || 0 })
+      } catch { setLbData({ results: [], total: 0 }) }
+    }
   }
 
   async function loadSchools() {
+    if (schoolsCacheRef.current) { setScData(schoolsCacheRef.current); return }
     setScData(null)
+    const set = (d: any) => {
+      const data = { results: Array.isArray(d?.results) ? d.results : [], total: Number(d?.total) || 0 }
+      schoolsCacheRef.current = data
+      setScData(data)
+    }
     try {
-      const r = await fetch('/api/schools?limit=200')
-      const d = await r.json()
-      setScData({ results: Array.isArray(d?.results) ? d.results : [], total: Number(d?.total) || 0 })
-    } catch { setScData({ results: [], total: 0 }) }
+      const r = await fetch('/data/schools.json')
+      if (!r.ok) throw new Error()
+      set(await r.json())
+    } catch {
+      try {
+        const r = await fetch('/api/schools?limit=200')
+        set(await r.json())
+      } catch { setScData({ results: [], total: 0 }) }
+    }
   }
 
   async function showSchoolStudents(school: string) {

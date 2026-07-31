@@ -1,19 +1,18 @@
-import { getDb, ensureIndexes } from '@/lib/db'
+import { ensureIndexes, batch } from '@/lib/db'
 import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  const db = getDb()
   try {
     await ensureIndexes()
-    const [total, branches] = await Promise.all([
-      db.execute('SELECT COUNT(*) as c FROM students'),
-      db.execute('SELECT branch, COUNT(*) as c FROM students GROUP BY branch ORDER BY c DESC'),
+    const [total, branches] = await batch([
+      'SELECT COUNT(*) as c FROM students',
+      'SELECT branch, COUNT(*) as c FROM students GROUP BY branch ORDER BY c DESC',
     ])
-    const t = (total.rows[0] || {}) as any
+    const t = (total[0] || {}) as any
     const branchMap: Record<string, number> = {}
-    for (const row of branches.rows) {
+    for (const row of branches) {
       const r = row as any
       if (r.branch) branchMap[r.branch] = Number(r.c) || 0
     }

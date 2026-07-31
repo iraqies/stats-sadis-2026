@@ -7,6 +7,13 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
+# The static dataset (leaderboard/schools/stats) never changes, so cache it
+# hard on the CDN; the /api routes remain as a fallback.
+[[headers]]
+  for = "/data/*"
+  [headers.values]
+    Cache-Control = "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800"
+
 # Set these in Netlify dashboard: Site Settings → Environment Variables
 # TURSO_DB_URL - your Turso database URL (https://...)
 # TURSO_DB_TOKEN - your Turso authentication token

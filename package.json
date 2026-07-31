@@ -3,8 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "postinstall": "node postinstall.js && node scripts/generate-static-data.mjs",
+    "predev": "node scripts/generate-static-data.mjs",
     "dev": "next dev",
-    "build": "node scripts/migrate-turso.mjs && next build",
+    "generate:data": "node scripts/generate-static-data.mjs",
+    "build": "node scripts/generate-static-data.mjs && node scripts/migrate-turso.mjs && next build",
     "migrate": "node scripts/migrate-turso.mjs",
     "start": "next start"
   },

@@ -37,6 +37,53 @@ function buildSql(query: string | { sql: string; args?: any[] }): string {
   return query.sql.replace(/\?\d*/g, () => escape(args[i++]))
 }
 
+function mapRows(result: any): any[] {
+  const cols = result?.response?.result?.cols || []
+  const rows = result?.response?.result?.rows || []
+  return rows.map((row: any[]) => {
+    const obj: any = {}
+    row.forEach((val: any, i: number) => {
+      obj[cols[i]?.name || `col${i}`] = mapValue(val)
+    })
+    return obj
+  })
+}
+
+// Run several statements in ONE v2/pipeline HTTP round-trip instead of N
+// requests. Netlify serverless functions are latency-bound (cold starts +
+// per-request TCP/TLS to Turso), so collapsing N round trips into 1 is the
+// single biggest speedup available. Returns one mapped row array per statement,
+// in the same order as `statements`.
+export async function batch(
+  statements: (string | { sql: string; args?: any[] })[],
+): Promise<any[][]> {
+  const requests = statements.map((s) => ({ type: 'execute', stmt: { sql: buildSql(s) } }))
+  const body = JSON.stringify({ requests })
+
+  const res = await fetch(`${DB_URL}/v2/pipeline`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body,
+  })
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`Turso HTTP ${res.status}: ${text.slice(0, 300)}`)
+  }
+
+  const data = await res.json()
+  const results = data.results || []
+  return results.map((result: any) => {
+    if (result?.type === 'error') {
+      throw new Error(`Turso SQL error: ${result.error?.message ?? JSON.stringify(result.error)}`)
+    }
+    return mapRows(result)
+  })
+}
+
 const INDEX_STATEMENTS = [
   'CREATE INDEX IF NOT EXISTS idx_avg ON students(average_adjusted)',
   'CREATE INDEX IF NOT EXISTS idx_branch_avg ON students(branch, average_adjusted)',
@@ -54,13 +101,10 @@ let readyPromise: Promise<void> | null = null
 export function ensureIndexes(): Promise<void> {
   if (!readyPromise) {
     readyPromise = (async () => {
-      const db = getDb()
-      for (const sql of INDEX_STATEMENTS) {
-        try {
-          await db.execute(sql)
-        } catch (e) {
-          console.error('ensureIndexes failed:', e instanceof Error ? e.message : String(e))
-        }
+      try {
+        await batch(INDEX_STATEMENTS)
+      } catch (e) {
+        console.error('ensureIndexes failed:', e instanceof Error ? e.message : String(e))
       }
     })()
   }
@@ -70,42 +114,8 @@ export function ensureIndexes(): Promise<void> {
 export function getDb() {
   return {
     async execute(query: string | { sql: string; args?: any[] }): Promise<{ rows: any[] }> {
-      const sql = buildSql(query)
-      const body = JSON.stringify({
-        requests: [{ type: 'execute', stmt: { sql } }],
-      })
-
-      const res = await fetch(`${DB_URL}/v2/pipeline`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${TOKEN}`,
-          'Content-Type': 'application/json',
-        },
-        body,
-      })
-
-      if (!res.ok) {
-        const text = await res.text().catch(() => '')
-        throw new Error(`Turso HTTP ${res.status}: ${text.slice(0, 300)}`)
-      }
-
-      const data = await res.json()
-      const result = data.results?.[0]
-      if (result?.type === 'error') {
-        throw new Error(`Turso SQL error: ${result.error?.message ?? JSON.stringify(result.error)}`)
-      }
-
-      const cols = result?.response?.result?.cols || []
-      const rows = result?.response?.result?.rows || []
-      const mapped = rows.map((row: any[]) => {
-        const obj: any = {}
-        row.forEach((val: any, i: number) => {
-          obj[cols[i]?.name || `col${i}`] = mapValue(val)
-        })
-        return obj
-      })
-
-      return { rows: mapped }
+      const [res] = await batch([query])
+      return { rows: res }
     },
     close() {},
   }

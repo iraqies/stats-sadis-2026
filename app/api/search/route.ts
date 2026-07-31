@@ -1,4 +1,4 @@
-import { getDb, ensureIndexes } from '@/lib/db'
+import { getDb, ensureIndexes, batch } from '@/lib/db'
 import { normalizeArabic } from '@/lib/normalize'
 import { cleanSchoolName } from '@/lib/school'
 import { NextRequest, NextResponse } from 'next/server'
@@ -13,6 +13,12 @@ const FIELDS =
 // name_norm column would otherwise be ambiguous).
 const QFIELDS = FIELDS.split(',').map((c) => `students.${c.trim()}`).join(', ')
 const MAX_RESULTS = 300
+
+// The dataset is static (2026 exam results), so repeated queries can be served
+// from the Netlify CDN instead of hitting the Turso edge on every keystroke.
+const CACHE_HEADERS = {
+  'Cache-Control': 'public, max-age=60, s-maxage=3600, stale-while-revalidate=86400',
+}
 
 let ftsReady: boolean | null = null
 
@@ -41,78 +47,92 @@ function buildMatch(qNorm: string): string {
 
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get('q')?.trim()
-  if (!q) return NextResponse.json({ results: [], total: 0 })
+  if (!q) return NextResponse.json({ results: [], total: 0 }, { headers: CACHE_HEADERS })
 
   const qNorm = normalizeArabic(q)
+  if (!qNorm) return NextResponse.json({ results: [], total: 0 }, { headers: CACHE_HEADERS })
+
   const db = getDb()
 
   try {
     await ensureIndexes()
     if (await hasFts(db)) {
       const match = buildMatch(qNorm)
-      const [rows, count, idRows, idCount] = await Promise.all([
-        db.execute({
-          sql: `SELECT ${QFIELDS} FROM students JOIN ${FTS_TABLE} ON students.rowid = ${FTS_TABLE}.rowid
+      // All four statements in ONE pipeline request (single HTTP round-trip).
+      const [rows, count, idRows, idCount] = await batch([
+        {
+          // ORDER BY rank (FTS5's built-in relevance, same as bm25) triggers
+          // the FTS5 top-N optimization: SQLite walks the index and keeps only
+          // the best 300 rowids, then fetches exactly those few content rows.
+          // Sorting by average_adjusted or bm25() instead forces SQLite to pull
+          // EVERY match from the content table before sorting — that is what
+          // made common names like "محمد" time out (verified with EXPLAIN QUERY
+          // PLAN: `ORDER BY rank` => INDEX 32 top-N, no temp b-tree).
+          sql: `SELECT ${QFIELDS} FROM ${FTS_TABLE}
+                JOIN students ON students.rowid = ${FTS_TABLE}.rowid
                 WHERE ${FTS_TABLE} MATCH ?1
-                ORDER BY students.average_adjusted DESC
+                ORDER BY rank
                 LIMIT ${MAX_RESULTS}`,
           args: [match],
-        }),
-        db.execute({
+        },
+        {
           sql: `SELECT COUNT(*) AS c FROM ${FTS_TABLE} WHERE ${FTS_TABLE} MATCH ?1`,
           args: [match],
-        }),
-        db.execute({
+        },
+        {
           sql: `SELECT ${FIELDS} FROM students
                 WHERE student_id LIKE ?1
                 ORDER BY average_adjusted DESC
                 LIMIT ${MAX_RESULTS}`,
           args: [qNorm + '%'],
-        }),
-        db.execute({
+        },
+        {
           sql: `SELECT COUNT(*) AS c FROM students WHERE student_id LIKE ?1`,
           args: [qNorm + '%'],
-        }),
+        },
       ])
 
-      const byId = new Map<string, any>()
-      for (const s of [...rows.rows, ...idRows.rows]) {
-        if (s && s.student_id != null) byId.set(s.student_id, s)
+      const seen = new Set<string>()
+      const merged: any[] = []
+      for (const s of [...rows, ...idRows]) {
+        if (s && s.student_id != null && !seen.has(s.student_id)) {
+          seen.add(s.student_id)
+          merged.push(s)
+        }
       }
-      const merged = Array.from(byId.values())
-        .sort((a, b) => (b.average_adjusted || 0) - (a.average_adjusted || 0))
-        .slice(0, MAX_RESULTS)
-      const total = (Number((count.rows[0] as any)?.c) || 0) + (Number((idCount.rows[0] as any)?.c) || 0)
+      const limited = merged.slice(0, MAX_RESULTS)
+      const total =
+        (Number((count[0] as any)?.c) || 0) + (Number((idCount[0] as any)?.c) || 0)
 
-      return NextResponse.json({
-        results: merged.map(formatStudent),
-        total,
-      })
+      return NextResponse.json(
+        { results: limited.map(formatStudent), total },
+        { headers: CACHE_HEADERS },
+      )
     }
 
     // Fallback (no FTS yet): index-backed id prefix + LIKE on normalized name.
     const like = `%${qNorm}%`
-    const [rows, total] = await Promise.all([
-      db.execute({
+    const [rows, total] = await batch([
+      {
         sql: `SELECT ${FIELDS} FROM students
               WHERE student_id LIKE ?1 OR name_norm LIKE ?2
               ORDER BY average_adjusted DESC
               LIMIT ${MAX_RESULTS}`,
         args: [like, like],
-      }),
-      db.execute({
+      },
+      {
         sql: `SELECT COUNT(*) AS c FROM students
               WHERE student_id LIKE ?1 OR name_norm LIKE ?2`,
         args: [like, like],
-      }),
+      },
     ])
-    return NextResponse.json({
-      results: rows.rows.map(formatStudent),
-      total: Number((total.rows[0] as any)?.c) || 0,
-    })
+    return NextResponse.json(
+      { results: rows.map(formatStudent), total: Number((total[0] as any)?.c) || 0 },
+      { headers: CACHE_HEADERS },
+    )
   } catch (e) {
     console.error('Search failed:', e instanceof Error ? e.message : String(e))
-    return NextResponse.json({ results: [], total: 0 })
+    return NextResponse.json({ results: [], total: 0 }, { headers: CACHE_HEADERS })
   }
 }
 

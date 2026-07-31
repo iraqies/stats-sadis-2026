@@ -1,4 +1,4 @@
-import { getDb } from '@/lib/db'
+import { batch } from '@/lib/db'
 import { cleanSchoolName } from '@/lib/school'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -7,6 +7,10 @@ export const dynamic = 'force-dynamic'
 const FIELDS =
   'student_id, name, name_norm, school, directorate, branch, result, grades, total_adjusted, average_adjusted'
 
+const CACHE_HEADERS = {
+  'Cache-Control': 'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800',
+}
+
 export async function GET(req: NextRequest) {
   const school = req.nextUrl.searchParams.get('school')?.trim()
   if (!school) return NextResponse.json({ error: 'missing school' }, { status: 400 })
@@ -14,23 +18,22 @@ export async function GET(req: NextRequest) {
   if (Number.isNaN(limit) || limit < 1) limit = 50
   if (limit > 200) limit = 200
 
-  const db = getDb()
   try {
-    const [t, rows] = await Promise.all([
-      db.execute({ sql: 'SELECT COUNT(*) as c FROM students WHERE school = ?1', args: [school] }),
-      db.execute({
+    const [t, rows] = await batch([
+      { sql: 'SELECT COUNT(*) as c FROM students WHERE school = ?1', args: [school] },
+      {
         sql: `SELECT ${FIELDS} FROM students
               WHERE school = ?1
               ORDER BY average_adjusted DESC
               LIMIT ?2`,
         args: [school, limit],
-      }),
+      },
     ])
-    const total = Number((t.rows[0] as any)?.c) || 0
+    const total = Number((t[0] as any)?.c) || 0
 
     let rank = 1
-    const results = rows.rows.map((s: any, i: number) => {
-      if (i > 0 && Number(s.average_adjusted) < Number((rows.rows[i - 1] as any).average_adjusted)) rank = i + 1
+    const results = rows.map((s: any, i: number) => {
+      if (i > 0 && Number(s.average_adjusted) < Number((rows[i - 1] as any).average_adjusted)) rank = i + 1
       return {
         student_id: s.student_id,
         name: s.name,
@@ -47,10 +50,10 @@ export async function GET(req: NextRequest) {
       }
     })
 
-    return NextResponse.json({ results, total, school })
+    return NextResponse.json({ results, total, school }, { headers: CACHE_HEADERS })
   } catch (e) {
     console.error('School students failed:', e instanceof Error ? e.message : String(e))
-    return NextResponse.json({ results: [], total: 0, school })
+    return NextResponse.json({ results: [], total: 0, school }, { headers: CACHE_HEADERS })
   }
 }
 

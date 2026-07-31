@@ -1,4 +1,4 @@
-import { getDb, ensureIndexes } from '@/lib/db'
+import { ensureIndexes, batch } from '@/lib/db'
 import { cleanSchoolName } from '@/lib/school'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -13,40 +13,39 @@ export async function GET(req: NextRequest) {
   if (Number.isNaN(limit) || limit < 1) limit = 100
   if (limit > 1000) limit = 1000
 
-  const db = getDb()
   try {
     await ensureIndexes()
-    let rows: any
+    let rows: any[]
     let total: number
 
     if (branch) {
-      const [t, r] = await Promise.all([
-        db.execute({ sql: 'SELECT COUNT(*) as c FROM students WHERE branch = ?1', args: [branch] }),
-        db.execute({
+      const [t, r] = await batch([
+        { sql: 'SELECT COUNT(*) as c FROM students WHERE branch = ?1', args: [branch] },
+        {
           sql: `SELECT ${FIELDS} FROM students
                 WHERE branch = ?1
                 ORDER BY average_adjusted DESC, total_adjusted DESC
                 LIMIT ?2`,
           args: [branch, limit],
-        }),
+        },
       ])
-      total = Number((t.rows[0] as any)?.c) || 0
+      total = Number((t[0] as any)?.c) || 0
       rows = r
     } else {
-      const [t, r] = await Promise.all([
-        db.execute('SELECT COUNT(*) as c FROM students'),
-        db.execute({
+      const [t, r] = await batch([
+        'SELECT COUNT(*) as c FROM students',
+        {
           sql: `SELECT ${FIELDS} FROM students
                 ORDER BY average_adjusted DESC, total_adjusted DESC
                 LIMIT ?1`,
           args: [limit],
-        }),
+        },
       ])
-      total = Number((t.rows[0] as any)?.c) || 0
+      total = Number((t[0] as any)?.c) || 0
       rows = r
     }
 
-    const results = rows.rows.map((s: any) => ({
+    const results = rows.map((s: any) => ({
       student_id: s.student_id,
       name: s.name,
       name_display: s.name_norm,
