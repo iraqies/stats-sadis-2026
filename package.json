@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node scripts/migrate-turso.mjs && next build",
+    "migrate": "node scripts/migrate-turso.mjs",
     "start": "next start"
   },
   "dependencies": {

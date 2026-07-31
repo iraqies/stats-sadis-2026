@@ -42,7 +42,10 @@ export default function Page() {
     try {
       const r = await fetch('/api/stats')
       const d = await r.json()
-      setStats(d)
+      setStats({
+        total: Number(d?.total) || 0,
+        branches: (d?.branches && typeof d.branches === 'object') ? d.branches : {},
+      })
     } catch { }
   }
 
@@ -52,8 +55,8 @@ export default function Page() {
     try {
       const r = await fetch(`/api/search?q=${encodeURIComponent(q)}`)
       const d = await r.json()
-      setResults(d.results)
-      setCount(d.total)
+      setResults(Array.isArray(d?.results) ? d.results : [])
+      setCount(Number(d?.total) || 0)
     } catch { setResults([]); setCount(0) }
     setLoading(false)
   }, [])
@@ -76,7 +79,7 @@ export default function Page() {
     try {
       const r = await fetch(`/api/student?id=${encodeURIComponent(id)}`)
       const s = await r.json()
-      setProfile(s)
+      setProfile(s && s.student_id ? s : null)
     } catch { setProfile(null) }
   }
 
@@ -87,7 +90,7 @@ export default function Page() {
     try {
       const r = await fetch(`/api/leaderboard?${params}`)
       const d = await r.json()
-      setLbData(d)
+      setLbData({ results: Array.isArray(d?.results) ? d.results : [], total: Number(d?.total) || 0 })
     } catch { setLbData({ results: [], total: 0 }) }
   }
 
@@ -96,7 +99,7 @@ export default function Page() {
     try {
       const r = await fetch('/api/schools?limit=200')
       const d = await r.json()
-      setScData(d)
+      setScData({ results: Array.isArray(d?.results) ? d.results : [], total: Number(d?.total) || 0 })
     } catch { setScData({ results: [], total: 0 }) }
   }
 
@@ -104,7 +107,7 @@ export default function Page() {
     try {
       const r = await fetch(`/api/school-students?school=${encodeURIComponent(school)}&limit=100`)
       const d = await r.json()
-      setSchoolStudents(d.results)
+      setSchoolStudents(Array.isArray(d?.results) ? d.results : [])
     } catch { setSchoolStudents([]) }
   }
 
@@ -217,8 +220,8 @@ export default function Page() {
                         <td className="school">{s.school}</td>
                         <td className="branch">{s.directorate || '-'}</td>
                         <td className="branch">{s.branch}</td>
-                        <td className="avg">{s.average_adjusted?.toFixed(2)}</td>
-                        <td className="total">{s.total_adjusted?.toFixed(2)}</td>
+                        <td className="avg">{Number(s.average_adjusted || 0).toFixed(2)}</td>
+                        <td className="total">{Number(s.total_adjusted || 0).toFixed(2)}</td>
                       </tr>
                     )
                   })}
@@ -256,9 +259,9 @@ export default function Page() {
                         <td className={`rank ${rc}`}>{s.rank}</td>
                         <td className="name">{s.school}</td>
                         <td className="branch">{s.directorate || '-'}</td>
-                        <td className="school" style={{ textAlign: 'center' }}>{s.student_count.toLocaleString()}</td>
-                        <td className="total" style={{ textAlign: 'center' }}>{s.total_weight.toLocaleString()}</td>
-                        <td className="avg" style={{ textAlign: 'center' }}>{s.avg_score.toFixed(2)}</td>
+                        <td className="school" style={{ textAlign: 'center' }}>{Number(s.student_count || 0).toLocaleString()}</td>
+                        <td className="total" style={{ textAlign: 'center' }}>{Number(s.total_weight || 0).toLocaleString()}</td>
+                        <td className="avg" style={{ textAlign: 'center' }}>{Number(s.avg_score || 0).toFixed(2)}</td>
                       </tr>
                     )
                   })}
