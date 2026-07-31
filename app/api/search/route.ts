@@ -18,6 +18,10 @@ const MAX_RESULTS = 300
 // from the Netlify CDN instead of hitting the Turso edge on every keystroke.
 const CACHE_HEADERS = {
   'Cache-Control': 'public, max-age=60, s-maxage=3600, stale-while-revalidate=86400',
+  // Netlify's CDN strips query strings from the cache key by default, which
+  // would serve one query's results for every query. Vary on the query params
+  // so each search gets its own cache entry.
+  'Netlify-Vary': 'query',
 }
 
 let ftsReady: boolean | null = null

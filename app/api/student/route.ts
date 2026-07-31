@@ -8,6 +8,9 @@ export const dynamic = 'force-dynamic'
 // them instead of hitting Turso on every modal open.
 const CACHE_HEADERS = {
   'Cache-Control': 'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800',
+  // Netlify strips query strings from the cache key by default; vary on them
+  // so each student_id gets its own cache entry.
+  'Netlify-Vary': 'query',
 }
 
 export async function GET(req: NextRequest) {

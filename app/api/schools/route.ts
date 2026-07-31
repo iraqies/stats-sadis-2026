@@ -59,5 +59,8 @@ export async function GET(req: NextRequest) {
 function cacheHeaders(): Record<string, string> {
   return {
     'Cache-Control': 'public, max-age=300, s-maxage=600',
+    // Netlify strips query strings from the cache key by default; vary on them
+    // so each limit gets its own cache entry.
+    'Netlify-Vary': 'query',
   }
 }
