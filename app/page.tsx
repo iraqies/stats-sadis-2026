@@ -76,11 +76,14 @@ export default function Page() {
     if (val.trim().length < 2) { setResults([]); setCount(0) }
   }
 
-  function onSearchKeyDown(e: KeyboardEvent<HTMLInputElement>) {
-    if (e.key !== 'Enter') return
+  function runSearch() {
     const v = query.trim()
     if (v.length < 2) { setResults([]); setCount(0); setSubmitted(false); return }
     doSearch(v)
+  }
+
+  function onSearchKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') runSearch()
   }
 
   function resultClass(val: string) {
@@ -174,6 +177,8 @@ export default function Page() {
       </div>
 
       <div className="main">
+        <div className="layout">
+          <div className="content">
         {tab === 'search' && (
           <>
             <div className="search-bar">
@@ -185,6 +190,12 @@ export default function Page() {
                 onKeyDown={onSearchKeyDown}
                 autoFocus
               />
+              <button className="search-btn" onClick={runSearch} aria-label="بحث" title="بحث">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="7" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+              </button>
               <div className="count">{submitted && count > 0 ? `${count} نتيجة` : ''}</div>
             </div>
             <AdSlot format="banner" />
@@ -310,6 +321,15 @@ export default function Page() {
             {scData && <AdSlot format="banner" />}
           </>
         )}
+          </div>
+
+          <aside className="sidebar">
+            <AdSlot format="sidebar" />
+            <div className="ad-sticky">
+              <AdSlot format="sidebar" />
+            </div>
+          </aside>
+        </div>
       </div>
 
       <div className={`overlay${profile || schoolStudents ? ' open' : ''}`} onClick={e => { if (e.target === e.currentTarget) { setProfile(null); setSchoolStudents(null) } }}>
@@ -346,9 +366,9 @@ export default function Page() {
   )
 }
 
-function AdSlot({ format }: { format?: 'banner' | 'in-feed' }) {
+function AdSlot({ format }: { format?: 'banner' | 'in-feed' | 'sidebar' }) {
   return (
-    <div className={`ad-container ${format === 'in-feed' ? 'ad-in-feed' : ''}`}>
+    <div className={`ad-container${format === 'in-feed' ? ' ad-in-feed' : format === 'sidebar' ? ' ad-sidebar' : ''}`}>
       <ins className="adsbygoogle"
         style={{ display: 'block' }}
         data-ad-client="ca-pub-6588852866380072"
